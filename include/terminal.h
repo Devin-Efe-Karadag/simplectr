@@ -1,0 +1,2 @@
+#ifndef SIMPLE_TERMINAL_H
+#define SIMPLE_TERMINAL_H
