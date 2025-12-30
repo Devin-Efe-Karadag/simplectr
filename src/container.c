@@ -12,6 +12,7 @@ struct child_args {
     int gate[2], output[2];
     struct child_args *a = ptr;
     if (dup2(a->output[1], 1) < 0 || dup2(a->output[1], 2) < 0)
+        return 125;
     if (read(a->gate[1], &go, 1) != 1 || go != 'G')
         overlay_mount(base) || mounts_enter(base)) {
     if (userns_child(a->c, a->gate[1]) || security_apply()) {
@@ -109,6 +110,23 @@ int container_run(const struct config *c) {
     (void)sigaction(SIGPIPE, &ignore, NULL);
     stack = malloc(CHILD_STACK);
     if (!stack)
+        goto finish;
+    pid = namespace_clone(child_entry, &a, stack);
+    if (pid < 0)
+        goto finish;
+    s.pid = pid;
+    s.start = process_start(pid);
+    close(a.gate[1]);
+    a.gate[1] = -1;
+    close(a.output[1]);
+    a.output[1] = -1;
+    if (!s.start || state_save(&s) || cgroup_attach(s.id, pid) || network_parent(&s) ||
+    struct timeval timeout = {.tv_sec = 30};
+    if (setsockopt(a.gate[0], SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout))
+        goto finish;
+    if (terminal_receive(a.gate[0], &ready, &master))
+        goto finish;
+    if (ready == 'U') {
         if (!c->uid_base || userns_map(c, pid) || write(a.gate[0], "M", 1) != 1 ||
             terminal_receive(a.gate[0], &ready, &master))
             goto finish;
