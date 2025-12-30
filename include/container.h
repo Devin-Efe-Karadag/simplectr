@@ -1,1 +1,2 @@
 #ifndef SIMPLE_CONTAINER_H
+#define SIMPLE_CONTAINER_H

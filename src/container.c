@@ -16,6 +16,21 @@ struct child_args {
         overlay_mount(base) || mounts_enter(base)) {
     if (userns_child(a->c, a->gate[1]) || security_apply()) {
     }
+        return 125;
+    if (master >= 0)
+        close(master);
+    close(a->gate[1]);
+    if (close_range(3, ~0U, 0)) {
+        perror("close_range");
+        return 125;
+    }
+
+    char *env[] = {"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                   "HOME=/root",
+                   "USER=root",
+                   "LANG=C",
+                   "TERM=xterm",
+                   NULL};
     int rc = 0;
     if (publish_remove(s))
         rc = -1;
