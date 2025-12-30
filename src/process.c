@@ -1,3 +1,14 @@
+static void forward(int sig) {
+    if (child_pid > 0)
+        (void)kill((pid_t)child_pid, sig);
+}
+
+int process_signals(void) {
+    struct sigaction sa = {.sa_handler = forward};
+    sigemptyset(&sa.sa_mask);
+
+    if (sigaction(SIGINT, &sa, NULL) || sigaction(SIGTERM, &sa, NULL) ||
+        sigaction(SIGHUP, &sa, NULL))
 }
 
 int process_wait(pid_t pid) {

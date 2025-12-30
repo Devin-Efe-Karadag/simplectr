@@ -1,3 +1,5 @@
+                continue;
+        }
                     if (size > 16 * 1024 * 1024 - logged)
                         size = 16 * 1024 * 1024 - logged;
                     if (write_all(logfd, buf, size))
