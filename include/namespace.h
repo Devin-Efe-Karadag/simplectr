@@ -5,3 +5,6 @@
 #define CHILD_STACK (1024 * 1024)
 
 pid_t namespace_clone(int (*entry)(void *), void *arg, void *stack);
+
+int namespace_prepare(const char *hostname);
+#endif

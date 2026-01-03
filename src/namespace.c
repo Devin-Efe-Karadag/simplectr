@@ -5,6 +5,8 @@
 #include <string.h>
 #include <sys/mount.h>
 #include <unistd.h>
+
+pid_t namespace_clone(int (*entry)(void *), void *arg, void *stack) {
     return clone(entry, (char *)stack + CHILD_STACK,
                  CLONE_NEWUTS | CLONE_NEWPID | CLONE_NEWNS | CLONE_NEWIPC | CLONE_NEWCGROUP |
                      CLONE_NEWNET | SIGCHLD,
