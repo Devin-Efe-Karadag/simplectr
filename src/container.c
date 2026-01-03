@@ -14,6 +14,11 @@ struct child_args {
     if (dup2(a->output[1], 1) < 0 || dup2(a->output[1], 2) < 0)
         return 125;
     if (read(a->gate[1], &go, 1) != 1 || go != 'G')
+    if (setsid() < 0)
+        return 125;
+    char base[PATH_MAX];
+
+    if (state_path(a->s, "", base) || namespace_prepare(a->c->name) || network_child(a->s) ||
         overlay_mount(base) || mounts_enter(base)) {
     if (userns_child(a->c, a->gate[1]) || security_apply()) {
     }
