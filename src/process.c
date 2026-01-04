@@ -9,6 +9,8 @@ int process_signals(void) {
 
     if (sigaction(SIGINT, &sa, NULL) || sigaction(SIGTERM, &sa, NULL) ||
         sigaction(SIGHUP, &sa, NULL))
+    sigemptyset(&sa.sa_mask);
+    sigset_t mask;
 }
 
 int process_wait(pid_t pid) {

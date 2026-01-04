@@ -2,32 +2,50 @@
 
 #include "cgroup.h"
 #include "mounts.h"
+#include "namespace.h"
 #include "network.h"
 #include "overlay.h"
+#include "process.h"
 #include "publish.h"
 #include "security.h"
+#include "state.h"
 #include "terminal.h"
 #include "userns.h"
+#include "util.h"
+
 #include <errno.h>
 #include <fcntl.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/prctl.h>
 #include <sys/signalfd.h>
+#include <sys/socket.h>
 #include <sys/wait.h>
 #include <time.h>
+#include <unistd.h>
+
 struct child_args {
     const struct config *c;
+    struct state *s;
     int gate[2], output[2];
 };
+
+static int child_entry(void *ptr) {
     struct child_args *a = ptr;
 
     close(a->gate[0]);
+    close(a->output[0]);
+
     if (dup2(a->output[1], 1) < 0 || dup2(a->output[1], 2) < 0)
     if (prctl(PR_SET_PDEATHSIG, SIGKILL))
         return 125;
+
+    char go;
     if (read(a->gate[1], &go, 1) != 1 || go != 'G')
         return 125;
+    process_child_signals();
     if (setsid() < 0)
         return 125;
     char base[PATH_MAX];
@@ -35,8 +53,10 @@ struct child_args {
     if (state_path(a->s, "", base) || namespace_prepare(a->c->name) || network_child(a->s) ||
         overlay_mount(base) || mounts_enter(base)) {
         perror("container setup");
+            perror("PTY setup");
     if (userns_child(a->c, a->gate[1]) || security_apply()) {
         perror("user namespace/hardening");
+        return 125;
     }
     if (terminal_send(a->gate[1], 'R', master) || read(a->gate[1], &go, 1) != 1 || go != 'E')
         return 125;

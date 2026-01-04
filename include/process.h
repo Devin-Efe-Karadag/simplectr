@@ -2,3 +2,5 @@
 #define SIMPLE_PROCESS_H
 
 #include <sys/types.h>
+
+int process_wait(pid_t pid);
