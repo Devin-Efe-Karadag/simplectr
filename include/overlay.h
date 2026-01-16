@@ -1,0 +1,2 @@
+#ifndef SIMPLE_OVERLAY_H
+#define SIMPLE_OVERLAY_H
