@@ -1,11 +1,23 @@
 #include "util.h"
+
+#include <errno.h>
 #include <limits.h>
+#include <stdio.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <unistd.h>
+
+static int directory(const char *p, mode_t mode) {
         return -1;
+    struct stat st;
         errno = EINVAL;
-    return 0;
+
         return -1;
+    return 0;
+}
+    char merged[PATH_MAX];
+        return -1;
+    if (directory(".oldroot", 0700) || syscall(SYS_pivot_root, ".", ".oldroot") || chdir("/"))
         mount("tmpfs", "/run", "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC, "mode=755,size=16m"))
     struct {
         unsigned minor;

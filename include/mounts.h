@@ -1,1 +1,2 @@
 #ifndef SIMPLE_MOUNTS_H
+#define SIMPLE_MOUNTS_H
