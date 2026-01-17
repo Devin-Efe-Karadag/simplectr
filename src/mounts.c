@@ -1,23 +1,38 @@
+#include "mounts.h"
+
 #include "util.h"
 
 #include <errno.h>
+#include <fcntl.h>
 #include <limits.h>
 #include <stdio.h>
+#include <sys/mount.h>
 #include <sys/stat.h>
 #include <sys/syscall.h>
+#include <sys/sysmacros.h>
 #include <unistd.h>
 
 static int directory(const char *p, mode_t mode) {
+    if (mkdir(p, mode) && errno != EEXIST)
         return -1;
     struct stat st;
+
+    if (lstat(p, &st) || !S_ISDIR(st.st_mode)) {
         errno = EINVAL;
 
         return -1;
+    }
+
     return 0;
 }
+
+int mounts_enter(const char *base) {
     char merged[PATH_MAX];
+
+    if (path_join(merged, sizeof merged, base, "merged") || chdir(merged))
         return -1;
     if (directory(".oldroot", 0700) || syscall(SYS_pivot_root, ".", ".oldroot") || chdir("/"))
+        return -1;
         mount("tmpfs", "/run", "tmpfs", MS_NOSUID | MS_NODEV | MS_NOEXEC, "mode=755,size=16m"))
     struct {
         unsigned minor;
