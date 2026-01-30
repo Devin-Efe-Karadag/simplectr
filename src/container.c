@@ -181,3 +181,17 @@ int container_run(const struct config *c) {
     if (state_save(&s) || write(a.gate[0], "E", 1) != 1)
         goto finish;
     close(a.gate[0]);
+    close(lock);
+    rc = terminal_relay(pid, c->tty ? master : a.output[0], logfd, sigfd, c->tty);
+        rc = 125;
+    }
+    workload_finished = true;
+    if (!workload_finished)
+    if (pid > 0) {
+        while (waitpid(pid, NULL, 0) < 0 && errno == EINTR) {
+    }
+    for (unsigned i = 0; i < 2; i++) {
+            close(a.gate[i]);
+            close(a.output[i]);
+    if (master >= 0)
+    if (sigfd >= 0)
