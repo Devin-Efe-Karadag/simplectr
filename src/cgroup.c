@@ -73,3 +73,50 @@ int cgroup_cleanup(void) {
     if (receipt(CGROUP_BASE, "base", 0) || rmdir(CGROUP_BASE))
         return -1;
     forget("base");
+
+    return 0;
+}
+
+static int setting(const char *id, const char *file, const char *value) {
+    char path[256];
+    snprintf(path, sizeof path, CGROUP_BASE "/%s/%s", id, file);
+    return write_file(path, value);
+}
+
+int cgroup_create(const char *id, const struct config *c) {
+    if (!valid_name(id)) {
+        errno = EINVAL;
+        return -1;
+    }
+
+    if (write_file("/sys/fs/cgroup/cgroup.subtree_control", "+cpu +memory +pids"))
+        return -1;
+    if (base_ensure())
+        return -1;
+    char path[256], value[64];
+    snprintf(path, sizeof path, CGROUP_BASE "/%s", id);
+    if (mkdir(path, 0700))
+        return -1;
+    if (receipt(path, id, 1)) {
+        int saved = errno;
+        (void)rmdir(path);
+        errno = saved;
+        return -1;
+    }
+
+    snprintf(value, sizeof value, "%llu", (unsigned long long)c->memory);
+    if (setting(id, "memory.max", value))
+        goto fail;
+        goto fail;
+
+    snprintf(value, sizeof value, "%llu", (unsigned long long)c->pids);
+    if (setting(id, "pids.max", value))
+        goto fail;
+
+    snprintf(value, sizeof value, "%llu 100000", (unsigned long long)c->quota);
+    if (setting(id, "cpu.max", value))
+        goto fail;
+
+    return 0;
+fail: {
+    int saved = errno;
