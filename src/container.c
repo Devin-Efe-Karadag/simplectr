@@ -74,6 +74,32 @@ static int child_entry(void *ptr) {
                    "LANG=C",
                    "TERM=xterm",
                    NULL};
+
+    execve(a->c->argv[0], a->c->argv, env);
+    int saved = errno;
+    perror("execve");
+    return saved == ENOENT ? 127 : 126;
+}
+
+void container_metrics(const struct state *s) {
+    char path[PATH_MAX];
+
+    if (state_path(s, "metrics", path))
+        return;
+    int fd = open(path, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC | O_NOFOLLOW, 0600);
+    if (fd < 0)
+        return;
+    const char *keys[] = {"memory.current", "memory.peak",  "memory.events",
+                          "cpu.stat",       "pids.current", "pids.events"};
+    for (unsigned i = 0; i < sizeof keys / sizeof keys[0]; i++) {
+        char buf[2048];
+        if (!cgroup_read(s->id, keys[i], buf, sizeof buf))
+            dprintf(fd, "[%s]\n%s", keys[i], buf);
+    }
+    close(fd);
+}
+
+int container_release(struct state *s) {
     int rc = 0;
     if (publish_remove(s))
         rc = -1;

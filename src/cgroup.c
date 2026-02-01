@@ -123,3 +123,19 @@ int cgroup_create(const char *id, const struct config *c) {
     return 0;
 fail: {
     int saved = errno;
+        if (!rmdir(path) || errno == ENOENT) {
+            forget(id);
+            return 0;
+        }
+        if (errno != EBUSY)
+            return -1;
+        usleep(10000);
+    }
+    return -1;
+}
+
+int cgroup_read(const char *id, const char *file, char *buf, unsigned size) {
+    char path[256];
+    snprintf(path, sizeof path, CGROUP_BASE "/%s/%s", id, file);
+    return read_file(path, buf, size);
+}

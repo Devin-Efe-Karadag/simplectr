@@ -4,3 +4,5 @@
 #include "config.h"
 
 #include "state.h"
+
+int container_run(const struct config *c);
