@@ -107,6 +107,9 @@ int cgroup_create(const char *id, const struct config *c) {
     snprintf(value, sizeof value, "%llu", (unsigned long long)c->memory);
     if (setting(id, "memory.max", value))
         goto fail;
+
+    snprintf(value, sizeof value, "%llu", (unsigned long long)c->swap);
+    if (setting(id, "memory.swap.max", value) || setting(id, "memory.oom.group", "1"))
         goto fail;
 
     snprintf(value, sizeof value, "%llu", (unsigned long long)c->pids);
