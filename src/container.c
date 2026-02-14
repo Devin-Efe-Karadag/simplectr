@@ -54,6 +54,10 @@ static int child_entry(void *ptr) {
         overlay_mount(base) || mounts_enter(base)) {
         perror("container setup");
             perror("PTY setup");
+            return 125;
+        }
+    }
+
     if (userns_child(a->c, a->gate[1]) || security_apply()) {
         perror("user namespace/hardening");
         return 125;
