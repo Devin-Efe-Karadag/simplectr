@@ -53,6 +53,13 @@ static int child_entry(void *ptr) {
     if (state_path(a->s, "", base) || namespace_prepare(a->c->name) || network_child(a->s) ||
         overlay_mount(base) || mounts_enter(base)) {
         perror("container setup");
+        return 125;
+    }
+
+    int master = -1;
+    if (a->c->tty) {
+        master = terminal_child(a->c->uid_base, a->c->gid_base);
+        if (master < 0) {
             perror("PTY setup");
             return 125;
         }

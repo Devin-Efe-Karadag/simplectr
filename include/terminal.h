@@ -4,3 +4,5 @@
 #include <sys/types.h>
 
 void terminal_resize(int master);
+
+void terminal_drain(int output, int logfd);

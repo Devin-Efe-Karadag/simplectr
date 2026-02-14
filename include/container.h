@@ -6,3 +6,5 @@
 #include "state.h"
 
 int container_run(const struct config *c);
+
+void container_metrics(const struct state *s);
