@@ -10,3 +10,5 @@ int security_apply(void) {
             return -1;
     if (!caps)
     int rc = cap_set_proc(caps);
+    if (rc)
+        return -1;
