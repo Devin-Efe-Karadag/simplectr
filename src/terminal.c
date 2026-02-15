@@ -128,6 +128,38 @@ static int write_all(int fd, const char *buf, size_t size) {
     }
 
     return 0;
+}
+
+void terminal_resize(int master) {
+    struct winsize size = {.ws_row = 24, .ws_col = 80};
+    (void)ioctl(0, TIOCGWINSZ, &size);
+    (void)ioctl(master, TIOCSWINSZ, &size);
+}
+
+int terminal_relay(pid_t pid, int output, int logfd, int signals, int tty) {
+    int status = 0, rc = -1;
+
+    bool exited = false, eof = false, input = tty, raw = false;
+
+    size_t logged = 0;
+
+    struct termios saved;
+
+    if (tty) {
+        terminal_resize(output);
+
+        if (isatty(0)) {
+            if (tcgetattr(0, &saved))
+                return -1;
+            struct termios mode = saved;
+            cfmakeraw(&mode);
+
+            if (tcsetattr(0, TCSANOW, &mode))
+                return -1;
+            raw = true;
+        }
+    }
+
     while (!exited || !eof) {
         struct pollfd fds[] = {
             {eof ? -1 : output, POLLIN, 0}, {signals, POLLIN, 0}, {input ? 0 : -1, POLLIN, 0}};
@@ -136,6 +168,43 @@ static int write_all(int fd, const char *buf, size_t size) {
                 continue;
             goto done;
         }
+
+        if (fds[1].revents & POLLIN) {
+            struct signalfd_siginfo si;
+
+            while (read(signals, &si, sizeof si) == sizeof si) {
+                if (si.ssi_signo == SIGWINCH) {
+                    if (tty)
+                        terminal_resize(output);
+                } else if (si.ssi_signo != SIGCHLD && !exited)
+                    (void)kill(pid, (int)si.ssi_signo);
+            }
+        }
+
+        if (input && fds[2].revents & (POLLIN | POLLHUP)) {
+            char buf[4096];
+
+            ssize_t n = read(0, buf, sizeof buf);
+
+            if (n > 0) {
+                if (write_all(output, buf, (size_t)n) && errno != EIO)
+                    goto done;
+            } else if (!n) {
+                input = false;
+                (void)write_all(output, "\004", 1);
+            } else if (errno != EINTR)
+                goto done;
+        }
+
+        if (!eof && fds[0].revents & (POLLIN | POLLHUP)) {
+            char buf[8192];
+
+            ssize_t n = read(output, buf, sizeof buf);
+
+            if (n > 0) {
+                (void)write_all(1, buf, (size_t)n);
+                    size_t size = (size_t)n;
+
                     if (size > 16 * 1024 * 1024 - logged)
                         size = 16 * 1024 * 1024 - logged;
                     if (write_all(logfd, buf, size))

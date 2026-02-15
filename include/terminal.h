@@ -10,3 +10,5 @@ void terminal_drain(int output, int logfd);
 int terminal_child(uid_t uid, gid_t gid);
 
 int terminal_send(int socket, char byte, int fd);
+
+int terminal_receive(int socket, char *byte, int *fd);
