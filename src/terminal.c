@@ -122,7 +122,19 @@ static int write_all(int fd, const char *buf, size_t size) {
         if (n < 0 && errno == EINTR)
             continue;
         if (n <= 0)
+            return -1;
+        buf += n;
+        size -= (size_t)n;
+    }
+
+    return 0;
+    while (!exited || !eof) {
+        struct pollfd fds[] = {
+            {eof ? -1 : output, POLLIN, 0}, {signals, POLLIN, 0}, {input ? 0 : -1, POLLIN, 0}};
+        if (poll(fds, 3, 200) < 0) {
+            if (errno == EINTR)
                 continue;
+            goto done;
         }
                     if (size > 16 * 1024 * 1024 - logged)
                         size = 16 * 1024 * 1024 - logged;
