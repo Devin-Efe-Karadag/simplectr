@@ -40,6 +40,9 @@ static int set_alias(int index, const char *alias) {
     mnl_attr_put_strz(n, IFLA_IFALIAS, alias);
 
     return nl_exchange(n);
+    }
+
+    if (nl_address(index, "10.88.0.1") && errno != EEXIST)
         return -1;
     if (fd < 0)
         return -1;

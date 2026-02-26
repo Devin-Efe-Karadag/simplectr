@@ -8,3 +8,13 @@
 struct nl_request {
     union {
         char buf[8192];
+        struct nlmsghdr alignment;
+    };
+};
+
+struct nlmsghdr *nl_link(struct nl_request *r, unsigned short type, unsigned short flags,
+                         int index);
+
+int nl_exchange(struct nlmsghdr *nlh);
+
+int nl_up(int index);

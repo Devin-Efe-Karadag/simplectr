@@ -68,3 +68,73 @@ done: {
 
     return rc;
 }
+}
+
+int nl_exchange(struct nlmsghdr *n) { return exchange(n, NULL, NULL); }
+
+int nl_up(int index) {
+    struct nl_request r;
+
+    struct nlmsghdr *n = nl_link(&r, RTM_NEWLINK, 0, index);
+
+    struct ifinfomsg *i = mnl_nlmsg_get_payload(n);
+    i->ifi_change = IFF_UP;
+    i->ifi_flags = IFF_UP;
+
+    return nl_exchange(n);
+}
+
+int nl_delete(int index) {
+    struct nl_request r;
+
+    return nl_exchange(nl_link(&r, RTM_DELLINK, 0, index));
+}
+
+int nl_address(int index, const char *address) {
+    struct in_addr addr;
+
+    if (inet_pton(AF_INET, address, &addr) != 1) {
+        errno = EINVAL;
+
+        return -1;
+    }
+
+    struct nl_request r = {0};
+
+    struct nlmsghdr *n = mnl_nlmsg_put_header(r.buf);
+    n->nlmsg_type = RTM_NEWADDR;
+    n->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK | NLM_F_CREATE | NLM_F_EXCL;
+
+    struct ifaddrmsg *a = mnl_nlmsg_put_extra_header(n, sizeof *a);
+    a->ifa_family = AF_INET;
+    a->ifa_prefixlen = 24;
+    a->ifa_scope = RT_SCOPE_UNIVERSE;
+    a->ifa_index = (unsigned)index;
+    mnl_attr_put(n, IFA_LOCAL, sizeof addr, &addr);
+    mnl_attr_put(n, IFA_ADDRESS, sizeof addr, &addr);
+
+    return nl_exchange(n);
+}
+
+int nl_default(int index, const char *gateway) {
+    struct in_addr addr;
+
+    if (inet_pton(AF_INET, gateway, &addr) != 1) {
+        errno = EINVAL;
+
+        return -1;
+    }
+
+    struct nl_request r = {0};
+
+    struct nlmsghdr *n = mnl_nlmsg_put_header(r.buf);
+    n->nlmsg_type = RTM_NEWROUTE;
+    n->nlmsg_flags = NLM_F_REQUEST | NLM_F_ACK | NLM_F_CREATE | NLM_F_EXCL;
+
+    struct rtmsg *route = mnl_nlmsg_put_extra_header(n, sizeof *route);
+    route->rtm_family = AF_INET;
+    route->rtm_table = RT_TABLE_MAIN;
+    route->rtm_protocol = RTPROT_BOOT;
+    route->rtm_scope = RT_SCOPE_UNIVERSE;
+    route->rtm_type = RTN_UNICAST;
+    mnl_attr_put_u32(n, RTA_OIF, (unsigned)index);
