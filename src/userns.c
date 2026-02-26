@@ -88,3 +88,80 @@ static int shift_dir(int fd, dev_t device, const struct config *c) {
 
             if (child < 0) {
                 rc = -1;
+                break;
+            }
+            rc = shift_dir(child, device, c);
+            close(child);
+
+            if (rc)
+                break;
+        }
+
+        if (fchownat(fd, e->d_name, c->uid_base + st.st_uid, c->gid_base + st.st_gid,
+                     AT_SYMLINK_NOFOLLOW)) {
+            rc = -1;
+            break;
+        }
+    }
+    closedir(d);
+
+    return rc;
+}
+
+static int shift_root(const struct config *c) {
+    const char *roots[] = {"/", "/dev", "/tmp", "/run", "/dev/shm"};
+
+    for (unsigned i = 0; i < sizeof roots / sizeof roots[0]; i++) {
+        int fd = open(roots[i], O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+
+        if (fd < 0)
+            return -1;
+        struct stat st;
+
+        int rc = fstat(fd, &st);
+
+        if (!rc)
+            rc = shift_dir(fd, st.st_dev, c);
+        if (!rc)
+            rc = fchown(fd, c->uid_base, c->gid_base);
+        close(fd);
+
+        if (rc)
+            return -1;
+    }
+
+    return 0;
+}
+
+int userns_child(const struct config *c, int gate) {
+    if (!c->uid_base)
+        return 0;
+    if (shift_root(c) || setgroups(0, NULL) || unshare(CLONE_NEWUSER))
+        return -1;
+    char ready = 'U';
+
+    if (write(gate, &ready, 1) != 1 || read(gate, &ready, 1) != 1 || ready != 'M')
+        return -1;
+    if (setresgid(0, 0, 0) || setresuid(0, 0, 0))
+        return -1;
+    /* Credential changes clear PDEATHSIG; re-arm before the final parent handshake. */
+
+    return prctl(PR_SET_PDEATHSIG, SIGKILL);
+}
+
+int userns_map(const struct config *c, pid_t pid) {
+    char path[64], value[64];
+    snprintf(path, sizeof path, "/proc/%ld/setgroups", (long)pid);
+
+    if (write_file(path, "deny"))
+        return -1;
+    snprintf(path, sizeof path, "/proc/%ld/uid_map", (long)pid);
+    snprintf(value, sizeof value, "0 %u 65536\n", c->uid_base);
+
+    if (write_file(path, value))
+        return -1;
+    snprintf(path, sizeof path, "/proc/%ld/gid_map", (long)pid);
+    snprintf(value, sizeof value, "0 %u 65536\n", c->gid_base);
+
+    return write_file(path, value);
+}

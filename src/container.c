@@ -200,6 +200,11 @@ int container_run(const struct config *c) {
     close(a.output[1]);
     a.output[1] = -1;
     if (!s.start || state_save(&s) || cgroup_attach(s.id, pid) || network_parent(&s) ||
+        publish_setup(&s))
+        goto finish;
+    if (write(a.gate[0], "G", 1) != 1)
+        goto finish;
+    char ready;
     struct timeval timeout = {.tv_sec = 30};
     if (setsockopt(a.gate[0], SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout))
         goto finish;
