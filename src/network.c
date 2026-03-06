@@ -44,6 +44,29 @@ static int set_alias(int index, const char *alias) {
 
     if (nl_address(index, "10.88.0.1") && errno != EEXIST)
         return -1;
+    if (nl_up(index) || nat_setup())
+        return -1;
+    return index;
+}
+
+static int veth_create(const struct state *s, const char *peer) {
+    struct nl_request r;
+
+    struct nlmsghdr *n = nl_link(&r, RTM_NEWLINK, NLM_F_CREATE | NLM_F_EXCL, 0);
+    mnl_attr_put_strz(n, IFLA_IFNAME, s->veth);
+
+    char alias[64];
+    snprintf(alias, sizeof alias, "simplectr:%s", s->id);
+    mnl_attr_put_strz(n, IFLA_IFALIAS, alias);
+
+    struct nlattr *info = mnl_attr_nest_start(n, IFLA_LINKINFO);
+    mnl_attr_put_strz(n, IFLA_INFO_KIND, "veth");
+
+    struct nlattr *data = mnl_attr_nest_start(n, IFLA_INFO_DATA),
+                  *p = mnl_attr_nest_start(n, VETH_INFO_PEER);
+    struct ifinfomsg *i = mnl_nlmsg_put_extra_header(n, sizeof *i);
+    i->ifi_family = AF_UNSPEC;
+    mnl_attr_put_strz(n, IFLA_IFNAME, peer);
     if (fd < 0)
         return -1;
     n = nl_link(&r, RTM_NEWLINK, 0, other);
