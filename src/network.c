@@ -67,6 +67,37 @@ static int veth_create(const struct state *s, const char *peer) {
     struct ifinfomsg *i = mnl_nlmsg_put_extra_header(n, sizeof *i);
     i->ifi_family = AF_UNSPEC;
     mnl_attr_put_strz(n, IFLA_IFNAME, peer);
+    mnl_attr_put_strz(n, IFLA_IFALIAS, alias);
+    mnl_attr_nest_end(n, p);
+    mnl_attr_nest_end(n, data);
+    mnl_attr_nest_end(n, info);
+
+    return nl_exchange(n);
+}
+
+int network_parent(const struct state *s) {
+    if (!s->ip)
+        return 0;
+    int bridge = bridge_ensure();
+
+    if (bridge < 0)
+        return -1;
+    char peer[16];
+    snprintf(peer, sizeof peer, "kp%.10s", s->id);
+
+    if (if_nametoindex(s->veth) || if_nametoindex(peer)) {
+        errno = EEXIST;
+    }
+        return -1;
+    if (!host || !other)
+    char alias[64];
+    snprintf(alias, sizeof alias, "simplectr:%s", s->id);
+        return -1;
+    struct nlmsghdr *n = nl_link(&r, RTM_NEWLINK, 0, host);
+    if (nl_exchange(n) || nl_up(host))
+    char path[64];
+    int fd = open(path, O_RDONLY | O_CLOEXEC);
+
     if (fd < 0)
         return -1;
     n = nl_link(&r, RTM_NEWLINK, 0, other);
