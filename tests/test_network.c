@@ -23,6 +23,10 @@ int main(void) {
     mnl_attr_put_strz(n, IFLA_INFO_KIND, "dummy");
     mnl_attr_nest_end(n, info);
     assert(!nl_exchange(n));
+
+    int idx = (int)if_nametoindex("simplectr-test0");
+    assert(idx > 0);
+    assert(!nl_address(idx, "10.88.0.1"));
     assert(!nl_up(idx));
     assert(!nl_subnet_conflict(idx));
     assert(!if_nametoindex("simplectr-test0"));
