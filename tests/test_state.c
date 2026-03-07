@@ -20,3 +20,11 @@ static void reject_record(const struct state *s, unsigned magic, off_t size) {
     assert(pwrite(fd, &magic, sizeof magic, 0) == sizeof magic);
     assert(!ftruncate(fd, size));
     close(fd);
+
+    struct state loaded;
+    assert(state_load(s->id, &loaded) == -1 && errno == EINVAL);
+
+    struct stat st;
+    assert(!stat(path, &st) && st.st_size == size); /* Reader must not migrate records. */
+    assert(!state_save(s));
+}
