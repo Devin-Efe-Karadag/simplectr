@@ -13,3 +13,10 @@
 
 static void reject_record(const struct state *s, unsigned magic, off_t size) {
     char path[PATH_MAX];
+    assert(!state_path(s, "state", path));
+
+    int fd = open(path, O_WRONLY | O_CLOEXEC | O_NOFOLLOW);
+    assert(fd >= 0);
+    assert(pwrite(fd, &magic, sizeof magic, 0) == sizeof magic);
+    assert(!ftruncate(fd, size));
+    close(fd);

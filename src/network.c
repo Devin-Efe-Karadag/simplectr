@@ -108,4 +108,19 @@ int network_parent(const struct state *s) {
 
     return rc;
 }
+
+int network_child(const struct state *s) {
+    int lo = (int)if_nametoindex("lo");
+
+    if (!lo || nl_up(lo))
+        return -1;
+    /* Namespace-local setting permits ping without retaining CAP_NET_RAW. */
+
+    if (write_file("/proc/sys/net/ipv4/ping_group_range", "0 2147483647"))
+        return -1;
+    if (!s->ip)
+        return 0;
+    char peer[16];
+    snprintf(peer, sizeof peer, "kp%.10s", s->id);
+    struct nlmsghdr *n = nl_link(&r, RTM_NEWLINK, 0, index);
     mnl_attr_put_strz(n, IFLA_IFNAME, "eth0");

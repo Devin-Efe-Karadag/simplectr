@@ -138,3 +138,73 @@ int nl_default(int index, const char *gateway) {
     route->rtm_scope = RT_SCOPE_UNIVERSE;
     route->rtm_type = RTN_UNICAST;
     mnl_attr_put_u32(n, RTA_OIF, (unsigned)index);
+    mnl_attr_put(n, RTA_GATEWAY, sizeof addr, &addr);
+
+    return nl_exchange(n);
+}
+
+struct conflict {
+    int bridge;
+
+    bool found;
+};
+
+static int route_cb(const struct nlmsghdr *n, void *ptr) {
+    struct conflict *c = ptr;
+
+    if (n->nlmsg_len < NLMSG_LENGTH(sizeof(struct rtmsg))) {
+        errno = EPROTO;
+
+        return MNL_CB_ERROR;
+    }
+
+    struct rtmsg *r = mnl_nlmsg_get_payload(n);
+
+    if (r->rtm_family != AF_INET || !r->rtm_dst_len || r->rtm_dst_len > 32)
+        return MNL_CB_OK;
+    uint32_t dst = 0, oif = 0;
+
+    const struct nlattr *a;
+    mnl_attr_for_each(a, n, sizeof *r) {
+        unsigned type = mnl_attr_get_type(a);
+
+        if (type == RTA_DST || type == RTA_OIF) {
+            if (mnl_attr_validate(a, MNL_TYPE_U32))
+                return MNL_CB_ERROR;
+            if (type == RTA_DST)
+                dst = ntohl(mnl_attr_get_u32(a));
+            else
+                oif = mnl_attr_get_u32(a);
+        }
+    }
+
+    unsigned prefix = r->rtm_dst_len < 24 ? r->rtm_dst_len : 24;
+    uint32_t mask = 0xffffffffU << (32 - prefix);
+
+    if ((dst & mask) == (0x0a580000U & mask) && (int)oif != c->bridge)
+        c->found = true;
+    return MNL_CB_OK;
+}
+
+int nl_subnet_conflict(int bridge_index) {
+    struct nl_request req = {0};
+
+    struct nlmsghdr *n = mnl_nlmsg_put_header(req.buf);
+    n->nlmsg_type = RTM_GETROUTE;
+    n->nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+
+    struct rtmsg *r = mnl_nlmsg_put_extra_header(n, sizeof *r);
+    r->rtm_family = AF_INET;
+
+    struct conflict c = {.bridge = bridge_index};
+
+    if (exchange(n, route_cb, &c))
+        return -1;
+    if (c.found) {
+        errno = EADDRINUSE;
+
+        return -1;
+    }
+
+    return 0;
+}

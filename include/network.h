@@ -4,3 +4,5 @@
 #include "state.h"
 
 int network_parent(const struct state *s);
+
+int network_child(const struct state *s);

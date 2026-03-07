@@ -18,3 +18,12 @@ struct nlmsghdr *nl_link(struct nl_request *r, unsigned short type, unsigned sho
 int nl_exchange(struct nlmsghdr *nlh);
 
 int nl_up(int index);
+
+int nl_address(int index, const char *address);
+
+int nl_default(int index, const char *gateway);
+
+int nl_delete(int index);
+
+int nl_subnet_conflict(int bridge_index);
+#endif
