@@ -122,5 +122,12 @@ int network_child(const struct state *s) {
         return 0;
     char peer[16];
     snprintf(peer, sizeof peer, "kp%.10s", s->id);
+
+    int index = (int)if_nametoindex(peer);
+
+    if (!index)
+        return -1;
+    struct nl_request r;
+
     struct nlmsghdr *n = nl_link(&r, RTM_NEWLINK, 0, index);
     mnl_attr_put_strz(n, IFLA_IFNAME, "eth0");
