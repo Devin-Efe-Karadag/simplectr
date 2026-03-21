@@ -3,46 +3,107 @@
 #include "util.h"
 
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
+#include <stdio.h>
 #include <string.h>
+#include <sys/file.h>
 #include <sys/random.h>
+#include <sys/stat.h>
 #include <time.h>
+#include <unistd.h>
 #define MAGIC 0x4b454c33U
+
+int state_id_valid(const char *id) {
     if (strlen(id) != 16)
+        return 0;
     for (unsigned i = 0; i < 16; i++)
+        if (!((id[i] >= '0' && id[i] <= '9') || (id[i] >= 'a' && id[i] <= 'f')))
             return 0;
+    return 1;
 }
+
+int state_lock(void) {
     if (mkdir_safe(STATE_BASE, 0700))
+        return -1;
     int fd = open(STATE_BASE "/lock", O_RDWR | O_CREAT | O_CLOEXEC | O_NOFOLLOW, 0600);
-        return -1;
-        close(fd);
-    }
-}
-    if (!state_id_valid(s->id)) {
-        return -1;
-    int n = snprintf(path, PATH_MAX, STATE_BASE "/%s%s%s", s->id, *leaf ? "/" : "", leaf);
-}
-    char path[PATH_MAX], temp[PATH_MAX];
-        return -1;
-        return -1;
-    if (!rc)
-    close(fd);
-        rc = rename(temp, path);
-        (void)unlink(temp);
-}
-    if (!state_id_valid(id)) {
-        return -1;
-    char path[PATH_MAX];
+
     if (fd < 0)
-    if (fstat(fd, &st) || !S_ISREG(st.st_mode) || st.st_size != sizeof *s) {
         return -1;
+    if (flock(fd, LOCK_EX)) {
+        close(fd);
+
+        return -1;
+    }
+
+    return fd;
+}
+
+int state_path(const struct state *s, const char *leaf, char path[PATH_MAX]) {
+    if (!state_id_valid(s->id)) {
+        errno = EINVAL;
+
+        return -1;
+    }
+
+    int n = snprintf(path, PATH_MAX, STATE_BASE "/%s%s%s", s->id, *leaf ? "/" : "", leaf);
+
+    return n < 0 || n >= PATH_MAX ? -1 : 0;
+}
+
+int state_save(const struct state *s) {
+    char path[PATH_MAX], temp[PATH_MAX];
+
+    if (state_path(s, "state", path) || state_path(s, "state.new", temp))
+        return -1;
+    int fd = open(temp, O_WRONLY | O_CREAT | O_TRUNC | O_NOFOLLOW | O_CLOEXEC, 0600);
+
+    if (fd < 0)
+        return -1;
+    int rc = write(fd, s, sizeof *s) == sizeof *s ? 0 : -1;
+
+    if (!rc)
+        rc = fsync(fd);
+    close(fd);
+
+    if (!rc)
+        rc = rename(temp, path);
+    if (rc)
+        (void)unlink(temp);
+    return rc;
+}
+
+int state_load(const char *id, struct state *s) {
+    if (!state_id_valid(id)) {
+        errno = EINVAL;
+
+        return -1;
+    }
+
+    char path[PATH_MAX];
+    snprintf(path, sizeof path, STATE_BASE "/%s/state", id);
+    if (fd < 0)
+        return -1;
+    if (fstat(fd, &st) || !S_ISREG(st.st_mode) || st.st_size != sizeof *s) {
+        close(fd);
+        return -1;
+    }
     ssize_t n = read(fd, s, sizeof *s);
+    close(fd);
         strcmp(id, s->id) || !valid_name(s->name) || s->status < 0 || s->status > 2 || s->ip < 0 ||
+        s->ip > 254 || s->publish_count > MAX_PUBLISH || (s->publish_count && !s->ip) ||
         errno = EINVAL;
+
+        return -1;
     if ((s->uid_base == 0) != (s->gid_base == 0) ||
+        (s->uid_base && (s->uid_base < 65536 || s->gid_base < 65536 ||
         errno = EINVAL;
+
+        return -1;
     for (unsigned i = 0; i < s->publish_count; i++) {
+        if (!s->publish[i].host || !s->publish[i].container) {
             return -1;
+        }
     return s->pid > 1 && s->start && process_start(s->pid) == s->start;
 }
 

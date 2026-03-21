@@ -8,3 +8,8 @@
 #include <sys/types.h>
 
 struct state {
+    unsigned magic;
+    char id[17], name[33], veth[16];
+    pid_t pid, supervisor;
+    unsigned long long start, supervisor_start;
+    long long created, ended;

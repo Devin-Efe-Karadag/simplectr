@@ -36,3 +36,10 @@ int main(void) {
     struct config c = {.bridge = true,
                        .memory = 268435456,
                        .pids = 64,
+                       .quota = 100000,
+                       .publish_count = 2,
+                       .publish = {{18081, 8080}, {18082, 8080}}};
+    snprintf(c.name, sizeof c.name, "state-test-%ld", (long)getpid());
+
+    struct state s, loaded;
+    assert(!state_new(&s, &c));
