@@ -85,3 +85,40 @@ int publish_setup(const struct state *s) {
             "add rule ip %s output fib daddr type local tcp dport %u dnat to 10.88.0.%d:%u\n"
             "original proto-dst %u masquerade\n",
         if (n < 0 || (size_t)n >= sizeof rules - used) {
+        }
+        used += (size_t)n;
+    }
+
+    if (write_file("/proc/sys/net/ipv4/conf/" BRIDGE "/route_localnet", "1"))
+        return -1;
+    return nat_transaction(rules, NULL, 0);
+}
+
+int publish_remove(const struct state *s) {
+    if (!s->publish_count)
+        return 0;
+    char name[40], query[128], tables[32768], body[16384], marker[80];
+
+    if (table_name(s, name))
+        return -1;
+    if (nat_transaction("list tables\n", tables, sizeof tables))
+        return -1;
+    snprintf(query, sizeof query, "table ip %s\n", name);
+
+    if (!strstr(tables, query))
+        return 0;
+    snprintf(query, sizeof query, "list table ip %s\n", name);
+
+    if (nat_transaction(query, body, sizeof body))
+        return -1;
+    snprintf(marker, sizeof marker, "comment \"simplectr-publish-%s\"", s->id);
+
+    if (!strstr(body, marker)) {
+        errno = EEXIST;
+
+        return -1;
+    }
+    snprintf(query, sizeof query, "delete table ip %s\n", name);
+
+    return nat_transaction(query, NULL, 0);
+}
