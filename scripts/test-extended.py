@@ -53,3 +53,58 @@ def read_until(fd, pattern, timeout=8):
     data = b''
     end = time.monotonic() + timeout
     while pattern not in data and time.monotonic() < end:
+        if select.select([fd], [], [], .1)[0]:
+            try:
+                chunk = os.read(fd, 8192)
+            except OSError as e:
+                if e.errno == errno.EIO:
+                    break
+                raise
+            if not chunk:
+                break
+            data += chunk
+    assert pattern in data, (pattern, data)
+    return data
+
+def interactive(args):
+    master, slave = os.openpty()
+    fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', 25, 90, 0, 0))
+    original = termios.tcgetattr(slave)
+    def session():
+        os.setsid()
+        fcntl.ioctl(0, termios.TIOCSCTTY, 0)
+    p = sp.Popen([R, *args], stdin=slave, stdout=slave, stderr=slave, preexec_fn=session)
+    processes.append(p)
+    try:
+        # A prompt confirms the inner shell has started before sending terminal input.
+        read_until(master, b'# ')
+        os.write(master, b'echo TTY_READY; stty size\n')
+        read_until(master, b'\r\n25 90\r\n')
+        fcntl.ioctl(slave, termios.TIOCSWINSZ, struct.pack('HHHH', 33, 101, 0, 0))
+        os.kill(p.pid, signal.SIGWINCH)
+        time.sleep(.1)
+        os.write(master, b'stty size\n')
+        read_until(master, b'\r\n33 101\r\n')
+        os.write(master, b'sleep 30\n')
+        time.sleep(.2)
+        os.write(master, b'\x03')
+        time.sleep(.1)
+        os.write(master, b'echo AFTER_INTERRUPT; exit 23\n')
+        read_until(master, b'\r\nAFTER_INTERRUPT\r\n')
+        assert p.wait(timeout=8) == 23
+        assert termios.tcgetattr(slave) == original, 'host terminal was not restored'
+    finally:
+        if p.poll() is None:
+            p.kill()
+            p.wait()
+        os.close(master)
+        os.close(slave)
+
+assert os.geteuid() == 0, 'Run sudo make integration-test'
+assert not run('list').strip(), 'Runtime must be idle and cleaned before extended tests'
+try:
+    mapped = start('xt-map', ['--userns', USER, '--net', 'bridge'], ['/bin/sh', '-c', 'echo READY; exec sleep 120'])
+    state = inspect('xt-map')
+    hostpid = int(state['pid'])
+    uid_base, gid_base = int(state['uid_base']), int(state['gid_base'])
+    assert uid_base >= 65536 and gid_base >= 65536

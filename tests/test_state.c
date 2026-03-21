@@ -28,3 +28,11 @@ static void reject_record(const struct state *s, unsigned magic, off_t size) {
     assert(!stat(path, &st) && st.st_size == size); /* Reader must not migrate records. */
     assert(!state_save(s));
 }
+
+int main(void) {
+    int lock = state_lock();
+    assert(lock >= 0);
+
+    struct config c = {.bridge = true,
+                       .memory = 268435456,
+                       .pids = 64,

@@ -19,6 +19,8 @@ int main(void) {
     struct nl_request r;
 
     struct nlmsghdr *n = nl_link(&r, RTM_NEWLINK, NLM_F_CREATE | NLM_F_EXCL, 0);
+    mnl_attr_put_strz(n, IFLA_IFNAME, "simplectr-test0");
+
     struct nlattr *info = mnl_attr_nest_start(n, IFLA_LINKINFO);
     mnl_attr_put_strz(n, IFLA_INFO_KIND, "dummy");
     mnl_attr_nest_end(n, info);
@@ -28,6 +30,9 @@ int main(void) {
     assert(idx > 0);
     assert(!nl_address(idx, "10.88.0.1"));
     assert(!nl_up(idx));
+    assert(nl_subnet_conflict(0) == -1 && errno == EADDRINUSE);
     assert(!nl_subnet_conflict(idx));
+    assert(!nl_delete(idx));
     assert(!if_nametoindex("simplectr-test0"));
+    puts("Native rtnetlink tests passed");
 }

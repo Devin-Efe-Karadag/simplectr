@@ -26,3 +26,17 @@ static int child(void *arg) {
     }
 
     char *args[] = {
+        "/bin/sh", "-c",
+        "test -x /bin/busybox && test -d /proc/1 && echo alpine-pivot-ok; cat /proc/self/status | "
+        "/bin/grep -E 'CapEff|NoNewPrivs|Seccomp:'; test ! -e /.oldroot",
+        NULL};
+    char *env[] = {"PATH=/bin:/usr/bin", NULL};
+    execve(args[0], args, env);
+
+    return 3;
+}
+
+int main(void) {
+    char base[] = "/run/simplectr-mount-test-XXXXXX";
+    assert(mkdtemp(base));
+    assert(!overlay_dirs(base));

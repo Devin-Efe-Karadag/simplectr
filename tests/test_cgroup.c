@@ -14,3 +14,7 @@ int main(void) {
 
     struct config c = {.memory = 16777216, .swap = 0, .quota = 50000, .pids = 4};
     assert(!cgroup_create(id, &c));
+
+    char buf[256];
+    assert(!cgroup_read(id, "memory.max", buf, sizeof buf) && !strcmp(buf, "16777216\n"));
+    assert(!cgroup_read(id, "cpu.max", buf, sizeof buf) && !strcmp(buf, "50000 100000\n"));
