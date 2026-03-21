@@ -1,3 +1,50 @@
+#include "publish.h"
+
+#include "nat.h"
+#include "util.h"
+
+#include <arpa/inet.h>
+#include <errno.h>
+#include <stdio.h>
+#include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+static int port_conflict(struct state *other, void *ptr) {
+    const struct state *s = ptr;
+
+    if (!strcmp(s->id, other->id) || other->status == STATE_EXITED)
+        return 0;
+    for (unsigned i = 0; i < s->publish_count; i++)
+        for (unsigned j = 0; j < other->publish_count; j++)
+            if (s->publish[i].host == other->publish[j].host) {
+                errno = EADDRINUSE;
+
+                return -1;
+            }
+    return 0;
+}
+
+int publish_reserve(const struct state *s, int fds[MAX_PUBLISH]) {
+    if (state_each(port_conflict, (void *)s)) {
+        fprintf(
+            stderr,
+            "A live or stale container reserves this host port; use cleanup for stale records.\n");
+        return -1;
+    }
+
+    for (unsigned i = 0; i < s->publish_count; i++) {
+        fds[i] = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
+
+        if (fds[i] < 0)
+            return -1;
+        struct sockaddr_in addr = {.sin_family = AF_INET,
+                                   .sin_port = htons(s->publish[i].host),
+                                   .sin_addr = {.s_addr = htonl(INADDR_ANY)}};
+        if (bind(fds[i], (struct sockaddr *)&addr, sizeof addr) || listen(fds[i], 1)) {
+            fprintf(stderr, "TCP host port %u is already in use or unavailable.\n",
+                    s->publish[i].host);
+            return -1;
         }
     }
 
