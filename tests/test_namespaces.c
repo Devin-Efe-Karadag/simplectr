@@ -21,3 +21,12 @@ static int child(void *arg) {
         return 3;
     return access("/proc/1", F_OK) != 0;
 }
+
+int main(void) {
+    char before[64], after[64];
+    assert(!gethostname(before, sizeof before));
+
+    void *stack = malloc(CHILD_STACK);
+    assert(stack);
+
+    pid_t pid = namespace_clone(child, NULL, stack);
