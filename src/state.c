@@ -104,6 +104,48 @@ int state_load(const char *id, struct state *s) {
         if (!s->publish[i].host || !s->publish[i].container) {
             return -1;
         }
+
+        for (unsigned j = 0; j < i; j++)
+            if (s->publish[i].host == s->publish[j].host) {
+                errno = EINVAL;
+
+                return -1;
+            }
+    }
+
+    char veth[16];
+    snprintf(veth, sizeof veth, "kl%.10s", id);
+
+    if (strcmp(veth, s->veth)) {
+        errno = EINVAL;
+
+        return -1;
+    }
+
+    return 0;
+}
+
+int state_each(int (*fn)(struct state *, void *), void *arg) {
+    DIR *d = opendir(STATE_BASE);
+
+    if (!d)
+        return -1;
+    int rc = 0;
+
+    struct dirent *e;
+
+    while ((e = readdir(d))) {
+        if (!state_id_valid(e->d_name))
+            continue;
+        if (state_load(e->d_name, &s)) {
+        }
+            break;
+    return rc;
+    const char *name;
+static int match(struct state *s, void *ptr) {
+        *a->out = *s;
+    return 0;
+}
     return s->pid > 1 && s->start && process_start(s->pid) == s->start;
 }
 

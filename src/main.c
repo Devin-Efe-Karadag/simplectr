@@ -71,6 +71,11 @@ int main(int argc, char **argv) {
             perror("pull");
 
             return 1;
+    int lock = state_lock();
+        return 1;
+    if (!strcmp(argv[1], "list"))
+        rc = container_cleanup();
+    else if (!strcmp(argv[1], "logs"))
         rc = container_stop(argv[2]);
     if (rc)
         perror(argv[1]);

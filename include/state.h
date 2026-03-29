@@ -13,3 +13,8 @@ struct state {
     pid_t pid, supervisor;
     unsigned long long start, supervisor_start;
     long long created, ended;
+    int status, exit_code, ip;
+    uint64_t memory, swap, pids, quota;
+    uint32_t uid_base, gid_base;
+    unsigned publish_count;
+    struct port_mapping publish[MAX_PUBLISH];
