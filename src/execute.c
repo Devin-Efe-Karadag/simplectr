@@ -180,6 +180,19 @@ int container_exec(const char *name, char **argv, bool tty) {
     int status;
     while (waitpid(worker, &status, 0) < 0)
         if (errno != EINTR)
+            goto done;
+    worker = -1;
+    if (n != sizeof pid || pid <= 0 || !WIFEXITED(status) || WEXITSTATUS(status)) {
+        errno = ECHILD;
+        goto done;
+    }
+    if (!state_live(&state) || cgroup_attach(state.id, pid) || write(a.gate[0], "G", 1) != 1)
+        goto done;
+    struct timeval timeout = {.tv_sec = 10};
+    if (setsockopt(a.gate[0], SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof timeout))
+        goto done;
+    char ready;
+    if (terminal_receive(a.gate[0], &ready, &master) || ready != 'R' || (tty && master < 0) ||
         close(sigfd);
     if (lock >= 0)
         close(lock);

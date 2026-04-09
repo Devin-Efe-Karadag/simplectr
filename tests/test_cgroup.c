@@ -18,3 +18,7 @@ int main(void) {
     char buf[256];
     assert(!cgroup_read(id, "memory.max", buf, sizeof buf) && !strcmp(buf, "16777216\n"));
     assert(!cgroup_read(id, "cpu.max", buf, sizeof buf) && !strcmp(buf, "50000 100000\n"));
+    assert(!cgroup_read(id, "pids.max", buf, sizeof buf) && !strcmp(buf, "4\n"));
+    assert(!cgroup_remove(id));
+
+    char path[256];
