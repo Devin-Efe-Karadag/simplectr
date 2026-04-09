@@ -18,3 +18,8 @@ struct state {
     uint32_t uid_base, gid_base;
     unsigned publish_count;
     struct port_mapping publish[MAX_PUBLISH];
+};
+
+enum { STATE_STARTING = 0, STATE_RUNNING = 1, STATE_EXITED = 2 };
+
+int state_lock(void);

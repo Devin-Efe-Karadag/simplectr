@@ -146,6 +146,16 @@ static int match(struct state *s, void *ptr) {
         *a->out = *s;
     return 0;
 }
+    int rc = state_each(match, &a);
+
+    if (rc == 1)
+        return 0;
+    if (!rc)
+        errno = ENOENT;
+    return -1;
+}
+
+int state_live(const struct state *s) {
     return s->pid > 1 && s->start && process_start(s->pid) == s->start;
 }
 
@@ -160,8 +170,17 @@ static int used_ip(struct state *s, void *ptr) {
     if (s->status != STATE_EXITED && s->ip)
         used[s->ip] = 1;
     return 0;
+}
+
+int state_new(struct state *s, const struct config *c) {
+    struct state existing;
+
     if (!state_find(c->name, &existing)) {
+        errno = EEXIST;
+
         return -1;
+    }
+
     if (errno != ENOENT)
         return -1;
     *s = (struct state){.magic = MAGIC,
