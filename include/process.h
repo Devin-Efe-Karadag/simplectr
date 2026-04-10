@@ -4,3 +4,5 @@
 #include <sys/types.h>
 
 int process_wait(pid_t pid);
+
+int process_signals(void);

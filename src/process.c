@@ -1,3 +1,11 @@
+#include "process.h"
+
+#include <errno.h>
+#include <signal.h>
+#include <sys/wait.h>
+#include <unistd.h>
+static volatile sig_atomic_t child_pid;
+
 static void forward(int sig) {
     if (child_pid > 0)
         (void)kill((pid_t)child_pid, sig);
@@ -10,7 +18,10 @@ int process_signals(void) {
     if (sigaction(SIGINT, &sa, NULL) || sigaction(SIGTERM, &sa, NULL) ||
         sigaction(SIGHUP, &sa, NULL))
     sigemptyset(&sa.sa_mask);
+    (void)sigaction(SIGINT, &sa, NULL);
+    (void)sigaction(SIGHUP, &sa, NULL);
     sigset_t mask;
+    (void)sigprocmask(SIG_SETMASK, &mask, NULL);
 }
 
 int process_wait(pid_t pid) {
@@ -25,3 +36,7 @@ int process_wait(pid_t pid) {
             return -1;
         }
     }
+    child_pid = 0;
+
+    return WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status);
+}

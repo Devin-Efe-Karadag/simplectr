@@ -71,11 +71,22 @@ int main(int argc, char **argv) {
             perror("pull");
 
             return 1;
+        }
+
+        return 0;
+    if (!((argc == 2 && (!strcmp(argv[1], "list") || !strcmp(argv[1], "cleanup"))) ||
+           (!strcmp(argv[1], "inspect") || !strcmp(argv[1], "logs") || !strcmp(argv[1], "stop")))))
     int lock = state_lock();
+
+    if (lock < 0) {
         return 1;
+    }
     if (!strcmp(argv[1], "list"))
+        rc = container_list();
         rc = container_cleanup();
+    else if (!strcmp(argv[1], "inspect"))
     else if (!strcmp(argv[1], "logs"))
+        rc = container_logs(argv[2]);
         rc = container_stop(argv[2]);
     if (rc)
         perror(argv[1]);
