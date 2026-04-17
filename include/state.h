@@ -23,3 +23,7 @@ struct state {
 enum { STATE_STARTING = 0, STATE_RUNNING = 1, STATE_EXITED = 2 };
 
 int state_lock(void);
+
+int state_new(struct state *s, const struct config *c);
+
+int state_save(const struct state *s);

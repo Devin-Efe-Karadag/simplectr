@@ -77,14 +77,28 @@ int publish_setup(const struct state *s) {
         "add chain ip %s postrouting { type nat hook postrouting priority 99; policy accept; }\n",
         name, s->id, name, name, name);
     if (n < 0 || (size_t)n >= sizeof rules)
+        return -1;
     size_t used = (size_t)n;
+
+    for (unsigned i = 0; i < s->publish_count; i++) {
         unsigned hp = s->publish[i].host, cp = s->publish[i].container;
+
+        if (!hp || !cp) {
             errno = EINVAL;
+
+            return -1;
         }
+        n = snprintf(
             rules + used, sizeof rules - used,
+            "add rule ip %s prerouting fib daddr type local tcp dport %u dnat to 10.88.0.%d:%u\n"
             "add rule ip %s output fib daddr type local tcp dport %u dnat to 10.88.0.%d:%u\n"
+            "add rule ip %s postrouting ip daddr 10.88.0.%d tcp dport %u ct status dnat ct "
             "original proto-dst %u masquerade\n",
+            name, hp, s->ip, cp, name, hp, s->ip, cp, name, s->ip, cp, hp);
         if (n < 0 || (size_t)n >= sizeof rules - used) {
+            errno = EOVERFLOW;
+
+            return -1;
         }
         used += (size_t)n;
     }

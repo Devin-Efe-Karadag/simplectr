@@ -82,26 +82,45 @@ int state_load(const char *id, struct state *s) {
 
     char path[PATH_MAX];
     snprintf(path, sizeof path, STATE_BASE "/%s/state", id);
+
+    int fd = open(path, O_RDONLY | O_CLOEXEC | O_NOFOLLOW);
+
     if (fd < 0)
         return -1;
+    struct stat st;
+
     if (fstat(fd, &st) || !S_ISREG(st.st_mode) || st.st_size != sizeof *s) {
         close(fd);
+        errno = EINVAL;
+
         return -1;
     }
+    memset(s, 0, sizeof *s);
+
     ssize_t n = read(fd, s, sizeof *s);
     close(fd);
+
+    if (n != sizeof *s || s->magic != MAGIC || s->id[16] || s->name[32] || s->veth[15] ||
         strcmp(id, s->id) || !valid_name(s->name) || s->status < 0 || s->status > 2 || s->ip < 0 ||
         s->ip > 254 || s->publish_count > MAX_PUBLISH || (s->publish_count && !s->ip) ||
+        s->pid < 0 || s->supervisor <= 1) {
         errno = EINVAL;
 
         return -1;
+    }
+
     if ((s->uid_base == 0) != (s->gid_base == 0) ||
         (s->uid_base && (s->uid_base < 65536 || s->gid_base < 65536 ||
+                         s->uid_base > UINT32_MAX - 65536 || s->gid_base > UINT32_MAX - 65536))) {
         errno = EINVAL;
 
         return -1;
+    }
+
     for (unsigned i = 0; i < s->publish_count; i++) {
         if (!s->publish[i].host || !s->publish[i].container) {
+            errno = EINVAL;
+
             return -1;
         }
 

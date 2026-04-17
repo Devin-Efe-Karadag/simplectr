@@ -40,6 +40,34 @@ static int set_alias(int index, const char *alias) {
     mnl_attr_put_strz(n, IFLA_IFALIAS, alias);
 
     return nl_exchange(n);
+}
+
+static int bridge_ensure(void) {
+    int index = (int)if_nametoindex(BRIDGE);
+
+    if (index && owned(BRIDGE, "simplectr:bridge:v1"))
+        return -1;
+    if (nl_subnet_conflict(index))
+        return -1;
+    if (!index) {
+        struct nl_request r;
+
+        struct nlmsghdr *n = nl_link(&r, RTM_NEWLINK, NLM_F_CREATE | NLM_F_EXCL, 0);
+        mnl_attr_put_strz(n, IFLA_IFNAME, BRIDGE);
+        mnl_attr_put_strz(n, IFLA_IFALIAS, "simplectr:bridge:v1");
+
+        struct nlattr *info = mnl_attr_nest_start(n, IFLA_LINKINFO);
+        mnl_attr_put_strz(n, IFLA_INFO_KIND, "bridge");
+        mnl_attr_nest_end(n, info);
+
+        if (nl_exchange(n))
+            return -1;
+        index = (int)if_nametoindex(BRIDGE);
+
+        if (!index)
+            return -1;
+        if (set_alias(index, "simplectr:bridge:v1"))
+            return -1;
     }
 
     if (nl_address(index, "10.88.0.1") && errno != EEXIST)

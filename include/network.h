@@ -6,3 +6,5 @@
 int network_parent(const struct state *s);
 
 int network_child(const struct state *s);
+
+int network_remove(const struct state *s);
