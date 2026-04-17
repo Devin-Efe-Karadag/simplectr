@@ -39,6 +39,8 @@ static int child_entry(void *ptr) {
     close(a->output[0]);
 
     if (dup2(a->output[1], 1) < 0 || dup2(a->output[1], 2) < 0)
+        return 125;
+    close(a->output[1]);
     if (prctl(PR_SET_PDEATHSIG, SIGKILL))
         return 125;
 
