@@ -27,3 +27,9 @@ int state_lock(void);
 int state_new(struct state *s, const struct config *c);
 
 int state_save(const struct state *s);
+
+int state_load(const char *id, struct state *s);
+
+int state_find(const char *name, struct state *s);
+
+int state_each(int (*fn)(struct state *, void *), void *arg);

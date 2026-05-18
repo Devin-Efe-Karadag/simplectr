@@ -123,6 +123,17 @@ int cgroup_create(const char *id, const struct config *c) {
     return 0;
 fail: {
     int saved = errno;
+    forget(id);
+    return -1;
+}
+    char value[32];
+    return setting(id, "cgroup.procs", value);
+}
+    char path[256];
+    if (access(path, F_OK) && errno == ENOENT) {
+        return 0;
+    if (receipt(path, id, 0))
+    for (int i = 0; i < 100; i++) {
         if (!rmdir(path) || errno == ENOENT) {
             forget(id);
             return 0;

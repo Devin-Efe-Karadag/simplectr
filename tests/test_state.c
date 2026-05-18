@@ -43,3 +43,11 @@ int main(void) {
 
     struct state s, loaded;
     assert(!state_new(&s, &c));
+    assert(!state_load(s.id, &loaded));
+    assert(loaded.publish_count == 2 && loaded.publish[1].host == 18082);
+    reject_record(&s, 0x4b454c31U, (off_t)offsetof(struct state, uid_base));
+    reject_record(&s, 0x4b454c32U, (off_t)offsetof(struct state, publish_count));
+    reject_record(&s, 0x4b454c32U, sizeof s);
+    reject_record(&s, s.magic, sizeof s - 1);
+    reject_record(&s, s.magic, sizeof s + 1);
+    assert(!state_load(s.id, &loaded) && !strcmp(loaded.name, c.name));

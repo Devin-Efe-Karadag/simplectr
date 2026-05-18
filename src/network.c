@@ -159,3 +159,22 @@ int network_child(const struct state *s) {
 
     struct nlmsghdr *n = nl_link(&r, RTM_NEWLINK, 0, index);
     mnl_attr_put_strz(n, IFLA_IFNAME, "eth0");
+    if (!index)
+        return 0;
+    char alias[64];
+    snprintf(alias, sizeof alias, "simplectr:%s", s->id);
+        return errno == ENOENT || errno == ENODEV ? 0 : -1;
+    return rc && errno != ENODEV && errno != ENOENT ? -1 : 0;
+int network_cleanup(void) {
+    if (index && owned(BRIDGE, "simplectr:bridge:v1"))
+    if (index) {
+        if (!d)
+        struct dirent *e;
+        while ((e = readdir(d)))
+                busy = true;
+            }
+        if (busy) {
+            return -1;
+    }
+        return -1;
+}

@@ -157,14 +157,25 @@ int state_each(int (*fn)(struct state *, void *), void *arg) {
         if (!state_id_valid(e->d_name))
             continue;
         if (state_load(e->d_name, &s)) {
+            rc = -1;
         }
+        rc = fn(&s, arg);
             break;
+    }
     return rc;
+}
     const char *name;
+
+    struct state *out;
 static int match(struct state *s, void *ptr) {
+    struct find_arg *a = ptr;
         *a->out = *s;
+
+        return 1;
     return 0;
 }
+
+int state_find(const char *name, struct state *s) {
     int rc = state_each(match, &a);
 
     if (rc == 1)
