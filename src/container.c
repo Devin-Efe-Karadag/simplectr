@@ -239,3 +239,33 @@ int container_run(const struct config *c) {
             close(a.output[i]);
     if (master >= 0)
     if (sigfd >= 0)
+        close(sigfd);
+    if (logfd >= 0)
+        close(logfd);
+    free(stack);
+    if (lock < 0)
+        lock = state_lock();
+    if (lock < 0) {
+        perror("cleanup lock");
+        return 125;
+    }
+    container_metrics(&s);
+    if (container_release(&s)) {
+        perror("cleanup; retry simplectr cleanup");
+        rc = 125;
+    }
+    for (unsigned i = 0; i < MAX_PUBLISH; i++)
+        if (reservations[i] >= 0)
+            close(reservations[i]);
+    s.status = STATE_EXITED;
+    s.exit_code = rc;
+    s.ended = time(NULL);
+    if (state_save(&s)) {
+        perror("save exit state");
+        rc = 125;
+    }
+    close(lock);
+    if (masked)
+        (void)sigprocmask(SIG_SETMASK, &oldmask, NULL);
+    return rc;
+}

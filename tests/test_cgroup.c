@@ -22,3 +22,7 @@ int main(void) {
     assert(!cgroup_remove(id));
 
     char path[256];
+    snprintf(path, sizeof path, CGROUP_BASE "/%s", id);
+    assert(!mkdir(path, 0700));
+    assert(cgroup_remove(id) == -1); /* No receipt: foreign directory must survive. */
+    assert(!access(path, F_OK));

@@ -12,3 +12,6 @@ int cgroup_attach(const char *id, pid_t pid);
 int cgroup_remove(const char *id);
 
 int cgroup_cleanup(void);
+
+int cgroup_read(const char *id, const char *file, char *buf, unsigned size);
+#endif

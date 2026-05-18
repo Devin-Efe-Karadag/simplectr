@@ -123,16 +123,29 @@ int cgroup_create(const char *id, const struct config *c) {
     return 0;
 fail: {
     int saved = errno;
+    (void)rmdir(path);
     forget(id);
+    errno = saved;
     return -1;
 }
+}
+
+int cgroup_attach(const char *id, pid_t pid) {
     char value[32];
+
+    snprintf(value, sizeof value, "%ld", (long)pid);
     return setting(id, "cgroup.procs", value);
 }
+
+int cgroup_remove(const char *id) {
     char path[256];
+    snprintf(path, sizeof path, CGROUP_BASE "/%s", id);
     if (access(path, F_OK) && errno == ENOENT) {
+        forget(id);
         return 0;
+    }
     if (receipt(path, id, 0))
+        return -1;
     for (int i = 0; i < 100; i++) {
         if (!rmdir(path) || errno == ENOENT) {
             forget(id);
