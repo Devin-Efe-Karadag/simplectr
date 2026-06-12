@@ -6,3 +6,6 @@
 int process_wait(pid_t pid);
 
 int process_signals(void);
+
+void process_child_signals(void);
+#endif

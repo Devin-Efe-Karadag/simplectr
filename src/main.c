@@ -74,19 +74,31 @@ int main(int argc, char **argv) {
         }
 
         return 0;
+    }
+
     if (!((argc == 2 && (!strcmp(argv[1], "list") || !strcmp(argv[1], "cleanup"))) ||
+          (argc == 3 && valid_name(argv[2]) &&
            (!strcmp(argv[1], "inspect") || !strcmp(argv[1], "logs") || !strcmp(argv[1], "stop")))))
+        return usage();
     int lock = state_lock();
 
     if (lock < 0) {
+        perror("lock");
+
         return 1;
     }
+
+    int rc;
+
     if (!strcmp(argv[1], "list"))
         rc = container_list();
+    else if (!strcmp(argv[1], "cleanup"))
         rc = container_cleanup();
     else if (!strcmp(argv[1], "inspect"))
+        rc = container_inspect(argv[2]);
     else if (!strcmp(argv[1], "logs"))
         rc = container_logs(argv[2]);
+    else
         rc = container_stop(argv[2]);
     if (rc)
         perror(argv[1]);
