@@ -225,19 +225,33 @@ int container_run(const struct config *c) {
     if (state_save(&s) || write(a.gate[0], "E", 1) != 1)
         goto finish;
     close(a.gate[0]);
+    a.gate[0] = -1;
     close(lock);
+    lock = -1;
     rc = terminal_relay(pid, c->tty ? master : a.output[0], logfd, sigfd, c->tty);
+    if (rc < 0) {
         rc = 125;
+        goto finish;
     }
+    pid = -1;
     workload_finished = true;
+finish:
     if (!workload_finished)
+        perror("run/setup");
     if (pid > 0) {
+        (void)kill(pid, SIGKILL);
         while (waitpid(pid, NULL, 0) < 0 && errno == EINTR) {
+        }
     }
+    terminal_drain(a.output[0], logfd);
     for (unsigned i = 0; i < 2; i++) {
+        if (a.gate[i] >= 0)
             close(a.gate[i]);
+        if (a.output[i] >= 0)
             close(a.output[i]);
+    }
     if (master >= 0)
+        close(master);
     if (sigfd >= 0)
         close(sigfd);
     if (logfd >= 0)

@@ -115,15 +115,31 @@ int network_parent(const struct state *s) {
 
     if (if_nametoindex(s->veth) || if_nametoindex(peer)) {
         errno = EEXIST;
-    }
+
         return -1;
+    }
+
+    if (veth_create(s, peer))
+        return -1;
+    int host = (int)if_nametoindex(s->veth), other = (int)if_nametoindex(peer);
+
     if (!host || !other)
+        return -1;
     char alias[64];
     snprintf(alias, sizeof alias, "simplectr:%s", s->id);
+
+    if (set_alias(host, alias) || set_alias(other, alias))
         return -1;
+    struct nl_request r;
+
     struct nlmsghdr *n = nl_link(&r, RTM_NEWLINK, 0, host);
+    mnl_attr_put_u32(n, IFLA_MASTER, (unsigned)bridge);
+
     if (nl_exchange(n) || nl_up(host))
+        return -1;
     char path[64];
+    snprintf(path, sizeof path, "/proc/%ld/ns/net", (long)s->pid);
+
     int fd = open(path, O_RDONLY | O_CLOEXEC);
 
     if (fd < 0)
