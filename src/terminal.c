@@ -203,6 +203,8 @@ int terminal_relay(pid_t pid, int output, int logfd, int signals, int tty) {
 
             if (n > 0) {
                 (void)write_all(1, buf, (size_t)n);
+
+                if (logfd >= 0 && logged < 16 * 1024 * 1024) {
                     size_t size = (size_t)n;
 
                     if (size > 16 * 1024 * 1024 - logged)
@@ -217,3 +219,40 @@ int terminal_relay(pid_t pid, int output, int logfd, int signals, int tty) {
             } else if (errno != EINTR)
                 goto done;
         }
+
+        if (!exited) {
+            pid_t got = waitpid(pid, &status, WNOHANG);
+
+            if (got == pid)
+                exited = true;
+            else if (got < 0 && errno != EINTR)
+                goto done;
+        }
+    }
+    rc = WIFEXITED(status) ? WEXITSTATUS(status) : 128 + WTERMSIG(status);
+done:
+    if (raw && tcsetattr(0, TCSANOW, &saved))
+        rc = -1;
+    return rc;
+}
+
+void terminal_drain(int output, int logfd) {
+    if (output < 0)
+        return;
+    for (;;) {
+        struct pollfd p = {output, POLLIN, 0};
+
+        if (poll(&p, 1, 0) <= 0 || !(p.revents & POLLIN))
+            break;
+        char buf[4096];
+
+        ssize_t n = read(output, buf, sizeof buf);
+
+        if (n <= 0)
+            break;
+        (void)write_all(2, buf, (size_t)n);
+
+        if (logfd >= 0)
+            (void)write_all(logfd, buf, (size_t)n);
+    }
+}

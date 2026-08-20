@@ -4,3 +4,4 @@
 #include <stdbool.h>
 
 int container_exec(const char *name, char **argv, bool tty);
+#endif

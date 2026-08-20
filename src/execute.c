@@ -193,6 +193,53 @@ int container_exec(const char *name, char **argv, bool tty) {
         goto done;
     char ready;
     if (terminal_receive(a.gate[0], &ready, &master) || ready != 'R' || (tty && master < 0) ||
+        !state_live(&state))
+        goto done;
+    if (master >= 0)
+        terminal_resize(master);
+    if (write(a.gate[0], "E", 1) != 1)
+        goto done;
+    close(a.gate[0]);
+    a.gate[0] = -1;
+    close(lock);
+    lock = -1;
+    rc = terminal_relay(pid, tty ? master : a.output[0], -1, sigfd, tty);
+    if (rc < 0) {
+        rc = 125;
+        goto done;
+    }
+    pid = -1;
+    workload_finished = true;
+done:
+    if (pid > 0) {
+        (void)kill(pid, SIGKILL);
+        while (waitpid(pid, NULL, 0) < 0 && errno == EINTR) {
+        }
+    }
+    if (worker > 0) {
+        (void)kill(worker, SIGKILL);
+        while (waitpid(worker, NULL, 0) < 0 && errno == EINTR) {
+        }
+    }
+    if (!workload_finished)
+        perror("exec setup");
+    terminal_drain(a.output[0], -1);
+    for (unsigned i = 0; i < 7; i++)
+        if (ns[i] >= 0)
+            close(ns[i]);
+    for (unsigned i = 0; i < 2; i++) {
+        if (a.gate[i] >= 0)
+            close(a.gate[i]);
+        if (a.output[i] >= 0)
+            close(a.output[i]);
+        if (report[i] >= 0)
+            close(report[i]);
+    }
+    if (root >= 0)
+        close(root);
+    if (master >= 0)
+        close(master);
+    if (sigfd >= 0)
         close(sigfd);
     if (lock >= 0)
         close(lock);
