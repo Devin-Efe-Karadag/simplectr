@@ -6,3 +6,6 @@
 int publish_reserve(const struct state *s, int fds[MAX_PUBLISH]);
 
 int publish_setup(const struct state *s);
+
+int publish_remove(const struct state *s);
+#endif

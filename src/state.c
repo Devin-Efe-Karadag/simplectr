@@ -156,26 +156,43 @@ int state_each(int (*fn)(struct state *, void *), void *arg) {
     while ((e = readdir(d))) {
         if (!state_id_valid(e->d_name))
             continue;
+        struct state s;
+
         if (state_load(e->d_name, &s)) {
             rc = -1;
+            break;
         }
         rc = fn(&s, arg);
+
+        if (rc)
             break;
     }
+    closedir(d);
+
     return rc;
 }
+
+struct find_arg {
     const char *name;
 
     struct state *out;
+};
+
 static int match(struct state *s, void *ptr) {
     struct find_arg *a = ptr;
+
+    if (!strcmp(s->name, a->name) || !strcmp(s->id, a->name)) {
         *a->out = *s;
 
         return 1;
+    }
+
     return 0;
 }
 
 int state_find(const char *name, struct state *s) {
+    struct find_arg a = {name, s};
+
     int rc = state_each(match, &a);
 
     if (rc == 1)

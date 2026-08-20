@@ -175,22 +175,64 @@ int network_child(const struct state *s) {
 
     struct nlmsghdr *n = nl_link(&r, RTM_NEWLINK, 0, index);
     mnl_attr_put_strz(n, IFLA_IFNAME, "eth0");
+
+    if (nl_exchange(n))
+        return -1;
+    char addr[32];
+    snprintf(addr, sizeof addr, "10.88.0.%d", s->ip);
+    /* RTM_NEWADDR installs the connected /24 route; RTM_NEWROUTE installs the default. */
+
+    if (nl_address(index, addr) || nl_up(index) || nl_default(index, "10.88.0.1"))
+        return -1;
+    return 0;
+}
+
+int network_remove(const struct state *s) {
+    if (!s->ip)
+        return 0;
+    int index = (int)if_nametoindex(s->veth);
+
     if (!index)
         return 0;
     char alias[64];
     snprintf(alias, sizeof alias, "simplectr:%s", s->id);
+
+    if (owned(s->veth, alias))
         return errno == ENOENT || errno == ENODEV ? 0 : -1;
+    int rc = nl_delete(index);
+
     return rc && errno != ENODEV && errno != ENOENT ? -1 : 0;
+}
+
 int network_cleanup(void) {
+    int index = (int)if_nametoindex(BRIDGE);
+
     if (index && owned(BRIDGE, "simplectr:bridge:v1"))
-    if (index) {
-        if (!d)
-        struct dirent *e;
-        while ((e = readdir(d)))
-                busy = true;
-            }
-        if (busy) {
-            return -1;
-    }
         return -1;
+    if (index) {
+        DIR *d = opendir("/sys/class/net/" BRIDGE "/brif");
+
+        if (!d)
+            return -1;
+        struct dirent *e;
+
+        bool busy = false;
+
+        while ((e = readdir(d)))
+            if (strcmp(e->d_name, ".") && strcmp(e->d_name, "..")) {
+                busy = true;
+                break;
+            }
+        closedir(d);
+
+        if (busy) {
+            errno = EBUSY;
+
+            return -1;
+        }
+    }
+
+    if (nat_cleanup())
+        return -1;
+    return index ? nl_delete(index) : 0;
 }

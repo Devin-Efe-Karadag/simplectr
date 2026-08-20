@@ -33,3 +33,7 @@ int state_load(const char *id, struct state *s);
 int state_find(const char *name, struct state *s);
 
 int state_each(int (*fn)(struct state *, void *), void *arg);
+
+int state_path(const struct state *s, const char *leaf, char path[PATH_MAX]);
+
+int state_live(const struct state *s);

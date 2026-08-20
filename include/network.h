@@ -10,3 +10,4 @@ int network_child(const struct state *s);
 int network_remove(const struct state *s);
 
 int network_cleanup(void);
+#endif
