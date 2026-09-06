@@ -26,3 +26,6 @@ int main(void) {
     assert(!mkdir(path, 0700));
     assert(cgroup_remove(id) == -1); /* No receipt: foreign directory must survive. */
     assert(!access(path, F_OK));
+    assert(!rmdir(path));
+    puts("Cgroup setting and foreign-ownership tests passed");
+}

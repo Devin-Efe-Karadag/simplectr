@@ -37,3 +37,8 @@ int state_each(int (*fn)(struct state *, void *), void *arg);
 int state_path(const struct state *s, const char *leaf, char path[PATH_MAX]);
 
 int state_live(const struct state *s);
+
+int state_supervised(const struct state *s);
+
+int state_id_valid(const char *id);
+#endif

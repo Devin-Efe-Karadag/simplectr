@@ -36,3 +36,21 @@ int main(void) {
     assert(!valid_name("x;touch-x"));
     assert(!valid_name("a/b"));
     assert(parse_size("1MB", &n));
+    assert(parse_size("", &n));
+
+    struct port_mapping port;
+    assert(!parse_port("18080:8080", &port) && port.host == 18080 && port.container == 8080);
+    assert(parse_port("0:80", &port));
+    assert(parse_port("65536:80", &port));
+    assert(parse_port("80:80;id", &port));
+    assert(parse_port("-1:80", &port));
+    assert(parse_port("80:80:90", &port));
+    assert(parse_port("999999999999999999:1", &port));
+
+    char *advanced[] = {"--name", "test",      "--tty",      "--userns", "testuser", "--net",
+                        "bridge", "--publish", "18080:8080", "--",       "/bin/sh",  NULL};
+    assert(!parse_config(11, advanced, &c) && c.tty && c.publish_count == 1);
+    puts("CLI validation tests passed");
+
+    return 0;
+}

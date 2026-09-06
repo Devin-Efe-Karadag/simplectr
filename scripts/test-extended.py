@@ -108,3 +108,57 @@ try:
     hostpid = int(state['pid'])
     uid_base, gid_base = int(state['uid_base']), int(state['gid_base'])
     assert uid_base >= 65536 and gid_base >= 65536
+    host_status = Path(f'/proc/{hostpid}/status').read_text()
+    assert f'Uid:\t{uid_base}\t{uid_base}\t{uid_base}\t{uid_base}' in host_status
+    assert Path('/var/lib/simplectr/images/alpine/bin/busybox').stat().st_uid == 0
+    command = 'test "$$" != 1; test "$(hostname)" = xt-map; test "$(id -u)" = 0; touch /root/exec-file; grep -q "NoNewPrivs:.*1" /proc/self/status; grep -q "CapEff:.*0000000000000000" /proc/self/status; ! mount -t tmpfs tmpfs /mnt; ping -c 1 -W 2 10.88.0.1; echo EXEC_OK'
+    assert 'EXEC_OK' in run('exec', 'xt-map', '--', '/bin/sh', '-ec', command)
+    run('exec', 'xt-map', '--', '/bin/sh', '-c', 'test "$1" = "a b" && exit 17', 'sh', 'a b', code=17)
+    run('exec', 'xt-map', '--', '/no-such-command', code=127)
+    cg = Path(state['cgroup'])
+    observed = run('exec', 'xt-map', '--', '/bin/sh', '-c', 'cat /proc/self/cgroup')
+    assert state['id'] in observed
+    interactive(['run', '--name', 'xt-tty', '--userns', USER, '--tty', '--', '/bin/sh', '-i'])
+    interactive(['exec', '--tty', 'xt-map', '--', '/bin/sh', '-i'])
+    sleeper = sp.Popen([R, 'exec', 'xt-map', '--', '/bin/sleep', '60'], stdout=sp.PIPE, stderr=sp.STDOUT)
+    processes.append(sleeper)
+    wait_for(lambda: int((cg / 'pids.current').read_text()) >= 2)
+    run('stop', 'xt-map')
+    assert mapped.wait(timeout=10) == 137
+    assert sleeper.wait(timeout=10) == 137
+    run('exec', 'xt-map', '--', '/bin/true', code=125)
+    print('PASS: mapped host UID, unchanged image, exec isolation/limits/security, PTY resize/Ctrl-C/restoration', flush=True)
+
+    server = start('xt-pub', ['--userns', USER, '--net', 'bridge', '--publish', '18081:8080', '--publish', '18082:8080'], ['/bin/sh', '-c', 'echo READY; exec /bin/busybox nc -lk -p 8080 -e /bin/cat'])
+    wait_for(lambda: exchange(18081))
+    wait_for(lambda: exchange(18082))
+    run('run', '--name', 'xt-conflict', '--net', 'bridge', '--publish', '18081:80', '--', '/bin/true', code=125)
+    assert exchange(18081)
+    run('run', '--name', 'xt-hairpin', '--net', 'bridge', '--', '/bin/sh', '-ec', 'test "$(echo hairpin | busybox nc -w 1 10.88.0.1 18081)" = hairpin')
+    with socket.socket() as occupied:
+        occupied.bind(('0.0.0.0', 18083))
+        occupied.listen()
+        run('run', '--name', 'xt-host-port', '--net', 'bridge', '--publish', '18083:80', '--', '/bin/true', code=125)
+    # Lost supervisor closes reservation sockets; stale records must still reserve published ports.
+    server.kill()
+    assert server.wait(timeout=10) == -signal.SIGKILL
+    time.sleep(.3)
+    run('run', '--name', 'xt-stale-port', '--net', 'bridge', '--publish', '18081:80', '--', '/bin/true', code=125)
+    run('cleanup')
+    assert not run('list').strip()
+    tables = sp.check_output(['/usr/sbin/nft', 'list', 'tables'], text=True)
+    assert 'simplectr_' not in tables
+    with socket.socket() as released:
+        released.bind(('0.0.0.0', 18081))
+    print('PASS: multiple TCP mappings, localhost/hairpin, collisions, stale reservations and crash cleanup', flush=True)
+finally:
+    for p in processes:
+        if p.poll() is None:
+            p.kill()
+    for p in processes:
+        try:
+            p.wait(timeout=10)
+        except sp.TimeoutExpired:
+            pass
+    time.sleep(.1)
+    run('cleanup')

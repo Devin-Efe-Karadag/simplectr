@@ -40,3 +40,16 @@ int main(void) {
     char base[] = "/run/simplectr-mount-test-XXXXXX";
     assert(mkdtemp(base));
     assert(!overlay_dirs(base));
+
+    void *stack = malloc(CHILD_STACK);
+    assert(stack);
+
+    pid_t pid = namespace_clone(child, base, stack);
+    assert(pid > 0);
+
+    int rc = process_wait(pid);
+    assert(!remove_tree(base));
+    free(stack);
+    assert(!rc);
+    puts("Mount tests passed");
+}

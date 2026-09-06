@@ -51,3 +51,10 @@ int main(void) {
     reject_record(&s, s.magic, sizeof s - 1);
     reject_record(&s, s.magic, sizeof s + 1);
     assert(!state_load(s.id, &loaded) && !strcmp(loaded.name, c.name));
+
+    char path[PATH_MAX];
+    assert(!state_path(&s, "", path));
+    assert(!remove_tree(path));
+    close(lock);
+    puts("Current state format and rejection tests passed");
+}

@@ -30,3 +30,10 @@ int main(void) {
     assert(stack);
 
     pid_t pid = namespace_clone(child, NULL, stack);
+    assert(pid > 0);
+    assert(process_wait(pid) == 0);
+    assert(!gethostname(after, sizeof after));
+    assert(!strcmp(before, after));
+    free(stack);
+    puts("Namespace tests passed");
+}
